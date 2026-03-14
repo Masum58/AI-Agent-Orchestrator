@@ -54,7 +54,9 @@ The request goes through the full AI pipeline:
 def chat(
     user_query: str = Query(
         ...,
-        description="The message or question that the user wants to ask the AI agent. Example: 'Explain what a contract is.'"
+        description="The message or question that the user wants to ask the AI agent.",
+        example="Explain what a contract is"
+
     )
 ):
 

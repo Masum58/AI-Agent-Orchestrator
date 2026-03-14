@@ -3,6 +3,7 @@
 # The orchestrator decides what data to collect and how to talk to the AI model.
 
 from app.context.prompt_builder import build_prompt
+from app.core.logger import logger
 from app.llm.openai_adapter import generate_response
 from app.memory.memory_service import get_instance_messages, search_experience
 
@@ -13,6 +14,8 @@ from app.memory.memory_service import get_instance_messages, search_experience
 # This function is the main entry point of the AI agent.
 # It receives the user's question and returns the AI's answer.
 def run_agent(user_query: str):
+
+    logger.info("Starting AI agent pipeline")
 
     # -------------------------------------------------
     # 1. Agent Configuration
@@ -57,12 +60,19 @@ def run_agent(user_query: str):
         user_query=user_query
     )
 
+    # DEBUG PROMPT
+    print(prompt)
+
+    logger.info("Prompt successfully built")
+
     # -------------------------------------------------
     # 5. Send the Prompt to the AI Model
     # -------------------------------------------------
     # The prompt is sent to the AI model through the LLM adapter.
     # The AI model reads the prompt and generates a response.
     response = generate_response(prompt)
+
+    logger.info("AI response generated")
 
     # Return the final AI answer
     return response
