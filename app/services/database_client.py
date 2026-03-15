@@ -1,50 +1,58 @@
 # Import the requests library
-# This library helps our system send HTTP requests to other services.
-# In this case, we will talk to the database service API.
+# This library allows our system to send HTTP requests to the database service.
 import requests
 
 
 # Base URL of the database service
-# All API calls will start with this base address.
-BASE_URL = "http://database-service"
+BASE_URL = "http://172.252.13.97:8004"
 
 
 # -------------------------------------------------
-# Function: get_agent
+# Function: get_agents
 # -------------------------------------------------
-# This function requests the configuration of an AI agent
-# from the database service.
-# Example: identity, behaviour, etc.
-def get_agent(agent_id: str):
-
-    # Build the full API URL
-    # Example result: http://database-service/agents/123
-    url = f"{BASE_URL}/agents/{agent_id}"
-
-    # Send a GET request to the database service
-    # The database will return the agent configuration.
-    response = requests.get(url)
-
-    # Convert the response into JSON format
-    # and return the data to the caller.
-    return response.json()
-
-
-# -------------------------------------------------
-# Function: get_instance_messages
-# -------------------------------------------------
-# This function loads conversation history
-# for a specific chat session (instance).
-# It helps the AI understand previous messages.
-def get_instance_messages(instance_id: str):
+# This function retrieves all AI agent configurations
+# such as identity and behaviour from the database.
+def get_agents():
 
     # Build the API URL
-    # Example result:
-    # http://database-service/instances/demo-instance/messages
-    url = f"{BASE_URL}/instances/{instance_id}/messages"
+    url = f"{BASE_URL}/api/agen-management/all/for-ai"
 
     # Send a GET request to the database service
     response = requests.get(url)
 
-    # Return the conversation messages as JSON
-    return response.json()
+    # Convert response to JSON
+    data = response.json()
+
+    # Return only the useful data section
+    return data.get("data", [])
+
+
+# -------------------------------------------------
+# Function: get_users
+# -------------------------------------------------
+# This function retrieves all mobile users from the database.
+def get_users():
+
+    url = f"{BASE_URL}/api/admin/mobile-users/for-ai"
+
+    response = requests.get(url)
+
+    data = response.json()
+
+    return data.get("data", [])
+
+
+# -------------------------------------------------
+# Function: get_user_messages
+# -------------------------------------------------
+# This function loads conversation history
+# for a specific user.
+def get_user_messages(user_id: str):
+
+    url = f"{BASE_URL}/api/admin/user-instances/for-ai/{user_id}"
+
+    response = requests.get(url)
+
+    data = response.json()
+
+    return data.get("data", [])
