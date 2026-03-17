@@ -3,7 +3,13 @@
 from app.context.prompt_builder import build_prompt
 from app.core.logger import logger
 from app.llm.openai_adapter import generate_response
-from app.memory.memory_service import get_instance_messages, search_experience
+
+# DB integrations
+from app.services.conversation_api import get_conversation_history
+from app.utils.conversation_formatter import format_conversation
+
+# (optional fallback)
+# from app.memory.memory_service import get_instance_messages
 
 
 def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
@@ -21,19 +27,37 @@ def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
         behaviour = "Be clear, concise, and professional."
 
         # -----------------------------
-        # 2. Short-term Memory
+        # 2. Short-term Memory (FROM DB)
         # -----------------------------
-        conversation = get_instance_messages(user_id)
+        try:
+            raw_conversation = get_conversation_history(user_id)
+
+            if not isinstance(raw_conversation, list):
+                logger.warning("Invalid conversation format from DB")
+                raw_conversation = []
+
+        except Exception as e:
+            logger.error(f"Conversation fetch failed: {str(e)}")
+            raw_conversation = []
+
+        conversation = format_conversation(raw_conversation)
+
+        # Limit context (VERY IMPORTANT)
+        conversation = conversation[-5:]
+
         short_term_memory_used = bool(conversation)
 
-        # -----------------------------
-        # 3. Long-term Memory
-        # -----------------------------
-        experience = search_experience(user_query)
-        long_term_memory_used = bool(experience)
+        logger.info(f"Loaded {len(conversation)} conversation messages")
 
         # -----------------------------
-        # 4. Prompt Building
+        # 3. Long-term Memory (TEMP MOCK)
+        # -----------------------------
+        # TODO: replace with experience API
+        experience = []
+        long_term_memory_used = False
+
+        # -----------------------------
+        # 4. Build Prompt
         # -----------------------------
         prompt = build_prompt(
             identity=identity,
@@ -45,18 +69,29 @@ def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
 
         logger.info("Prompt successfully built")
 
+        # Debug (VERY useful)
+        logger.debug(f"Prompt preview: {prompt[:300]}")
+
         # -----------------------------
-        # 5. LLM Call
+        # 5. Call LLM
         # -----------------------------
         llm_response = generate_response(prompt)
 
         logger.info("AI response generated")
 
         # -----------------------------
+        # 6. Output cleaning
+        # -----------------------------
+        reply = (llm_response.get("content") or "").strip()
+
+        if not reply:
+            reply = "I'm not sure how to respond to that."
+
+        # -----------------------------
         # Return Structured Response
         # -----------------------------
         return {
-            "reply": llm_response["content"],
+            "reply": reply,
             "usage": llm_response.get("usage", {}),
             "model": llm_response.get("model", "unknown"),
             "memory": {
@@ -68,7 +103,6 @@ def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
     except Exception as e:
         logger.error(f"Agent pipeline failed: {str(e)}", exc_info=True)
 
-        # Important: never crash API
         return {
             "reply": "Sorry, something went wrong while processing your request.",
             "usage": {},
