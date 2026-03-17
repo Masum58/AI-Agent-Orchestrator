@@ -31,8 +31,8 @@ def get_user_messages(user_id: str) -> List[Dict]:
 
     # Build the API URL
     # Example:
-    # http://172.252.13.97:8004/instances/demo-user/messages
-    url = f"{BASE_URL}/instances/{user_id}/messages"
+    # http://172.252.13.97:8004/api/admin/user-instances/for-ai/demo-user
+    url = f"{BASE_URL}/api/admin/user-instances/for-ai/{user_id}"
 
     try:
         # Log that we are requesting data
@@ -45,20 +45,20 @@ def get_user_messages(user_id: str) -> List[Dict]:
         response.raise_for_status()
 
         # Convert response into JSON format
-        data = response.json()
+        json_resp = response.json()
 
-        # Check if the returned data is a list
-        # Expected format:
-        # [
-        #   {"role": "user", "content": "Hello"},
-        #   {"role": "assistant", "content": "Hi"}
-        # ]
-        if not isinstance(data, list):
-            logger.warning("Invalid response format from database")
+        # Check if the returned data is a dict
+        if not isinstance(json_resp, dict) or "data" not in json_resp:
+            logger.warning("Invalid response format from database, expected dict with 'data'")
+            return []
+            
+        messages = json_resp.get("data", [])
+        if not isinstance(messages, list):
+            logger.warning("Invalid messages format from database")
             return []
 
         # Return the message list
-        return data
+        return messages
 
     # If request takes too long
     except requests.exceptions.Timeout:
