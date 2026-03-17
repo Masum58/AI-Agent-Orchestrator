@@ -16,7 +16,12 @@ def get_conversation_history(user_id: str):
         res.raise_for_status()  # ✅ important
         data = res.json()
 
-        return data.get("data",[])
+        messages=data.get("data",[])
+
+        if not isinstance(messages, list):
+            return []
+
+        return messages
 
     except Exception as e:
         logger.error(f"Conversation API failed: {str(e)}")

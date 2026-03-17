@@ -15,9 +15,15 @@ def format_conversation(messages: List[Dict]) -> List[Dict]:
             continue
 
         # -----------------------------
-        # 1. Normalize role
+        # 1. Normalize role (FIXED)
         # -----------------------------
-        role = str(msg.get("role", "")).lower()
+        role = (
+            msg.get("role")
+            or msg.get("actor")
+            or ""
+        )
+
+        role = str(role).lower()
 
         if role not in allowed_roles:
             role = "user"
