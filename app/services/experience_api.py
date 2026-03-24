@@ -1,35 +1,37 @@
 import requests
 from app.core.logger import logger
 
-BASE_URL = "http://172.252.13.97:8004/api"
+BASE_URL = "https://test21.fireai.agency"
 
 
 # -------------------------------------------------
 # SEARCH EXPERIENCE (Long-term memory)
 # -------------------------------------------------
-def search_experience(query: str):
+def search_experience(user_id: str, query: str):
+    """
+    Fetch experience from API and return clean list
+    """
+
+    url = f"{BASE_URL}/api/experience/user/for-ai/{user_id}"
+
     try:
-        res = requests.get(
-            f"{BASE_URL}/experience/search",
-            params={
-                "q": query,
-                "limit": 5
-            },
-            timeout=3
-        )
+        logger.info(f"[EXPERIENCE API] Fetching for user_id={user_id}")
 
-        res.raise_for_status()
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
 
-        data = res.json()
+        json_resp = response.json()
 
-        # Handle both formats
-        if isinstance(data, list):
-            return data
+        # 🔥 FIX: correct extraction
+        data_block = json_resp.get("data", {})
+        experience_list = data_block.get("data", [])
 
-        return data.get("data", [])
+        logger.info(f"[EXPERIENCE API] Retrieved {len(experience_list)} records")
+
+        return experience_list
 
     except Exception as e:
-        logger.error(f"Experience search failed: {str(e)}")
+        logger.error(f"[EXPERIENCE API ERROR] {str(e)}", exc_info=True)
         return []
 
 

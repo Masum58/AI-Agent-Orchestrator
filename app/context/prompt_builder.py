@@ -10,7 +10,7 @@ def build_prompt(
 ) -> str:
     
     # This list will store different parts of the prompt.
-    # Later we will combine all parts into one final text.
+    
     sections = []
 
     # -----------------------------
@@ -19,7 +19,7 @@ def build_prompt(
     # Here we tell the AI who it is.
     # Example: "You are a helpful customer support assistant"
     sections.append("### AGENT IDENTITY")
-    sections.append(identity)
+    sections.append(identity.strip())
 
     # -----------------------------
     # 2. Behaviour Rules
@@ -27,7 +27,7 @@ def build_prompt(
     # Here we define how the AI should behave.
     # Example: polite, short answers, professional tone.
     sections.append("\n### BEHAVIOUR")
-    sections.append(behaviour)
+    sections.append(behaviour.strip())
 
     # -----------------------------
     # 3. Past Experience
@@ -35,15 +35,21 @@ def build_prompt(
     # Sometimes the AI can learn from previous experiences.
     # If there are any stored experiences, we include them here.
     # This helps the AI make better decisions.
+
+    sections.append("\n### EXPERIENCE MEMORY")
     if experience:
-        sections.append("\n### PAST EXPERIENCE")
+        
 
         # Each experience is added as a bullet point.
         for exp in experience:
-            sections.append(f"- {exp}")
+            if exp:
+                sections.append(f"- {exp}")
+            else:
+                sections.append("No relevant experience found.")
 
     # -----------------------------
     # 4. Recent Conversation
+    sections.append("\n### RECENT CONVERSATION")
     # -----------------------------
     # To help the AI understand context,
     # we include recent messages from the conversation.
@@ -51,16 +57,18 @@ def build_prompt(
     # role (user or assistant)
     # content (what was said)
     if conversation:
-        sections.append("\n### RECENT CONVERSATION")
+        
 
         for msg in conversation:
-            role = msg.get("role")
-            content = msg.get("content")
+            role = (msg.get("role") or "user").upper()
+            content = msg.get("content") or ""
 
             # Example format:
             # USER: Hello
             # ASSISTANT: Hi, how can I help?
-            sections.append(f"{role.upper()}: {content}")
+            sections.append(f"{role}: {content}")
+    else:
+        sections.append("No recent conversation.")
 
     # -----------------------------
     # 5. User Question
@@ -68,7 +76,16 @@ def build_prompt(
     # This is the new question the user just asked.
     # The AI must answer this question.
     sections.append("\n### USER QUESTION")
-    sections.append(user_query)
+    sections.append(user_query.strip())
+
+
+     # -----------------------------
+    # 6. Instruction (VERY IMPORTANT 🔥)
+    # -----------------------------
+    sections.append("\n### INSTRUCTION")
+    sections.append(
+        "Use identity, experience memory, and conversation context to generate a relevant response."
+    )
 
     # -----------------------------
     # 6. Response Section

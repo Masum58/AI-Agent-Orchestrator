@@ -1,5 +1,5 @@
 # Import FastAPI framework
-from fastapi import FastAPI
+from fastapi import FastAPI,Request
 from datetime import datetime
 import uuid
 from pydantic import BaseModel
@@ -22,11 +22,26 @@ class ChatRequest(BaseModel):
 app = FastAPI()
 
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"[INCOMING] {request.method} {request.url}")
+
+    try:
+        response = await call_next(request)
+        logger.info(f"[OUTGOING] status={response.status_code}")
+        return response
+
+    except Exception as e:
+        logger.error(f"[MIDDLEWARE ERROR] {str(e)}", exc_info=True)
+        raise
+
+
 # --------------------------------------------------
 # Root Endpoint
 # --------------------------------------------------
 @app.get("/")
 def root():
+    logger.info("[ROOT] Health check hit")
     return {"message": "AI Agent Service Running"}
 
 
@@ -50,16 +65,21 @@ def chat(request: ChatRequest):
         conversation_id = request.conversation_id
         user_id = request.user_id or "anonymous-user"  # ✅ FIX
 
+        logger.info(f"[CHAT REQUEST] user_id={user_id}, query={user_query}")
+
         # --------------------------------------------------
         # Generate Conversation ID
         # --------------------------------------------------
         if not conversation_id:
             conversation_id = f"conv_{uuid.uuid4().hex[:10]}"
+            logger.debug(f"[CONVERSATION] Generated ID={conversation_id}")
 
         # --------------------------------------------------
         # Run AI Orchestrator
         # --------------------------------------------------
+        logger.info("[AGENT] Running agent...")
         result = run_agent(user_query, user_id=user_id)
+        logger.info("[AGENT] Completed")
 
         # --------------------------------------------------
         # Extract Data from Orchestrator
@@ -73,6 +93,7 @@ def chat(request: ChatRequest):
         # Handle orchestrator failure
         # --------------------------------------------------
         if result.get("error"):
+            logger.error("[AGENT ERROR] Orchestrator failed")
             return {
                 "success": False,
                 "error": "AI processing failed",
@@ -85,6 +106,7 @@ def chat(request: ChatRequest):
         # --------------------------------------------------
         # Return API Response (Improved but compatible)
         # --------------------------------------------------
+        logger.info("[CHAT SUCCESS] Response generated")
         return {
             "success": True,
             "message": "AI response generated successfully",
@@ -114,4 +136,4 @@ def chat(request: ChatRequest):
             "meta": {
                 "timestamp": datetime.utcnow().isoformat()
             }
-        }
+        } 

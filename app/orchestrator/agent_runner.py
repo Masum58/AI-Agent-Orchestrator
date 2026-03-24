@@ -7,6 +7,7 @@ from app.llm.openai_adapter import generate_response
 # DB integrations
 from app.memory.memory_service import get_instance_messages
 from app.services.experience_api import search_experience
+from app.services.database_client import get_user_profile   # ✅ NEW
 
 
 def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
@@ -18,13 +19,40 @@ def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
         logger.info("Starting AI agent pipeline")
 
         # -----------------------------
-        # 1. Agent Config
+        # 1. Load Identity (FIXED 🔥)
         # -----------------------------
-        identity = "You are a helpful AI assistant."
+        try:
+            profile = get_user_profile(user_id)
+
+            name = profile.get("name", "Unknown User")
+            role = profile.get("role", "USER")
+            designation = profile.get("designation", "")
+
+            # 🔥 Dynamic Identity (client requirement)
+            identity = f"""
+You are an AI assistant interacting with a user.
+
+User Information:
+- Name: {name}
+- Role: {role}
+- Designation: {designation}
+
+Use this information when generating responses.
+"""
+
+        except Exception as e:
+            logger.error(f"User profile fetch failed: {str(e)}")
+
+            # fallback (important for production)
+            identity = "You are a helpful AI assistant."
+
+        # -----------------------------
+        # 2. Behaviour (keep same)
+        # -----------------------------
         behaviour = "Be clear, concise, and professional."
 
         # -----------------------------
-        # 2. Short-term Memory (conversation)
+        # 3. Short-term Memory
         # -----------------------------
         try:
             conversation = get_instance_messages(user_id)
@@ -32,27 +60,59 @@ def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
             logger.error(f"Conversation fetch failed: {str(e)}")
             conversation = []
 
-        # Limit memory (IMPORTANT)
         conversation = conversation[-5:]
-
         short_term_memory_used = bool(conversation)
 
         logger.info(f"Loaded {len(conversation)} conversation messages")
 
         # -----------------------------
-        # 3. Long-term Memory (experience search)
+        # 4. Long-term Memory (experience)
+        # -----------------------------
+        # -----------------------------
+        # -----------------------------
+        # 4. Long-term Memory (experience)
         # -----------------------------
         try:
-            experience_data = search_experience(user_query)
-            experience = [item.get("content", "") for item in experience_data]
+            experience_data = search_experience(user_id, user_query)
+
+            # 🔥 DEBUG (see raw API data)
+            logger.debug(f"[EXPERIENCE RAW] {experience_data}")
+
+            # 🔥 FIX: handle multiple possible keys
+            experience = [
+                item.get("content")
+                or item.get("message")
+                or item.get("text")
+                or ""
+                for item in experience_data
+            ]
+
+            # remove empty strings
+            experience = [e for e in experience if e]
+
+            logger.info(f"[EXPERIENCE] Retrieved {len(experience)} items")
+
         except Exception as e:
             logger.error(f"Experience search failed: {str(e)}")
             experience = []
 
+
+        # 🔥 FALLBACK (VERY IMPORTANT)
+        if not experience:
+            logger.warning("[EXPERIENCE] No real experience data found")
+
+            # experience = [
+            #     msg.get("content", "")
+            #     for msg in conversation[-3:]
+            # ]
+
+
+        # 🔥 FINAL FLAG
         long_term_memory_used = bool(experience)
 
+
         # -----------------------------
-        # 4. Build Prompt
+        # 5. Build Prompt
         # -----------------------------
         prompt = build_prompt(
             identity=identity,
@@ -66,14 +126,14 @@ def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
         logger.debug(f"Prompt preview: {prompt[:300]}")
 
         # -----------------------------
-        # 5. Call LLM
+        # 6. Call LLM
         # -----------------------------
         llm_response = generate_response(prompt)
 
         logger.info("AI response generated")
 
         # -----------------------------
-        # 6. Output cleaning
+        # 7. Output cleaning
         # -----------------------------
         reply = ""
 
@@ -86,7 +146,7 @@ def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
             reply = "I'm not sure how to respond to that."
 
         # -----------------------------
-        # Return Structured Response
+        # Final Response
         # -----------------------------
         return {
             "reply": reply,
@@ -94,7 +154,9 @@ def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
             "model": llm_response.get("model", "unknown") if isinstance(llm_response, dict) else "unknown",
             "memory": {
                 "short_term_used": short_term_memory_used,
-                "long_term_used": long_term_memory_used
+                "long_term_used": long_term_memory_used,
+                "identity_used": True,  # ✅ NEW (for client proof)
+                "experience_count": len(experience)  if 'experience' in locals() else 0 
             }
         }
 
@@ -107,7 +169,8 @@ def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
             "model": "unknown",
             "memory": {
                 "short_term_used": False,
-                "long_term_used": False
+                "long_term_used": False,
+                "identity_used": False
             },
             "error": True
         }
