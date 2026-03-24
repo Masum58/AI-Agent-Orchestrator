@@ -98,7 +98,7 @@ def get_user_profile(user_id: str) -> Dict[str, Any]:
         user = next((u for u in users if u.get("id") == user_id), None)
 
         if not user:
-            logger.warning(f"[DB] User not found: {user_id}")
+            logger.warning(f"[DB] User not found: {user_id}")  
             return {}
 
         profile = {
@@ -132,14 +132,14 @@ def get_user_profile(user_id: str) -> Dict[str, Any]:
 # -------------------------------------------------
 # Run using:
 # python -m app.services.database_client
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    test_user_id = "caa3abb6-c2cc-426e-9ee3-dad32aa31883"  # use real id
+#     test_user_id = "caa3abb6-c2cc-426e-9ee3-dad32aa31883"  # use real id
 
-    print("\n--- Testing get_user_profile ---")
-    profile = get_user_profile(test_user_id)
-    print(profile)
+#     print("\n--- Testing get_user_profile ---")
+#     profile = get_user_profile(test_user_id)
+#     print(profile)
 
-    print("\n--- Testing get_user_messages ---")
-    messages = get_user_messages(test_user_id)
-    print(f"Messages count: {len(messages)}")
+#     print("\n--- Testing get_user_messages ---")
+#     messages = get_user_messages(test_user_id)
+#     print(f"Messages count: {len(messages)}")
