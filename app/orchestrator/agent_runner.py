@@ -3,6 +3,7 @@
 from app.context.prompt_builder import build_prompt
 from app.core.logger import logger
 from app.llm.openai_adapter import generate_response
+import time
 
 # DB integrations
 from app.memory.memory_service import get_instance_messages
@@ -19,7 +20,7 @@ def run_agent(user_query: str, user_id: str = "demo-user") -> dict:
         logger.info("Starting AI agent pipeline")
 
         # -----------------------------
-        # 1. Load Identity (FIXED 🔥)
+        # 1. Dynamic Identity
         # -----------------------------
         try:
             profile = get_user_profile(user_id)
@@ -37,7 +38,8 @@ User Information:
 - Role: {role}
 - Designation: {designation}
 
-Use this information when generating responses.
+Use this information only if relevant to the question.
+Do NOT repeat it unnecessarily.
 """
 
         except Exception as e:
@@ -49,13 +51,30 @@ Use this information when generating responses.
         # -----------------------------
         # 2. Behaviour (keep same)
         # -----------------------------
-        behaviour = "Be clear, concise, and professional."
+        behaviour =  """
+        You are a conversational AI assistant.
+
+        Rules:
+        - Always use previous conversation context if available
+        - Never guess unknown information
+        - If information is missing, say "I don't know"
+        - Do NOT assume user details
+        - Respond naturally (not email style)
+        - Do NOT write like an email
+        - Do NOT use greetings like "Hi" or "Best regards"
+        - Keep answers short and direct
+        """
 
         # -----------------------------
         # 3. Short-term Memory
         # -----------------------------
         try:
             conversation = get_instance_messages(user_id)
+
+            if not conversation:
+                logger.warning("Conversation empty,retrying after delay..")
+                time.sleep(1)
+                conversation.get_instance_messages(user_id)
         except Exception as e:
             logger.error(f"Conversation fetch failed: {str(e)}")
             conversation = []
@@ -68,23 +87,21 @@ Use this information when generating responses.
         # -----------------------------
         # 4. Long-term Memory (experience)
         # -----------------------------
-        # -----------------------------
-        # -----------------------------
-        # 4. Long-term Memory (experience)
-        # -----------------------------
+       
         try:
             experience_data = search_experience(user_id, user_query)
 
-            # 🔥 DEBUG (see raw API data)
+            #  DEBUG (see raw API data)
             logger.debug(f"[EXPERIENCE RAW] {experience_data}")
 
-            # 🔥 FIX: handle multiple possible keys
+            #  FIX: handle multiple possible keys
             experience = [
                 item.get("content")
                 or item.get("message")
                 or item.get("text")
                 or ""
                 for item in experience_data
+                if isinstance(item,dict)
             ]
 
             # remove empty strings
@@ -97,7 +114,7 @@ Use this information when generating responses.
             experience = []
 
 
-        # 🔥 FALLBACK (VERY IMPORTANT)
+        #  FALLBACK (VERY IMPORTANT)
         if not experience:
             logger.warning("[EXPERIENCE] No real experience data found")
 
@@ -107,7 +124,7 @@ Use this information when generating responses.
             # ]
 
 
-        # 🔥 FINAL FLAG
+        #  FINAL FLAG
         long_term_memory_used = bool(experience)
 
 
@@ -143,7 +160,7 @@ Use this information when generating responses.
             reply = llm_response.strip()
 
         if not reply:
-            reply = "I'm not sure how to respond to that."
+            reply = "I don't know"
 
         # -----------------------------
         # Final Response

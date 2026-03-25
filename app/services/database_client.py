@@ -35,6 +35,7 @@ def get_user_messages(user_id: str) -> List[Dict[str, Any]]:
         response.raise_for_status()
 
         json_resp = response.json()
+        logger.info(f"RAW DB RESPONSE: {json_resp}") 
 
         # Validate structure
         if not isinstance(json_resp, dict) or "data" not in json_resp:
@@ -136,7 +137,7 @@ def get_user_profile(user_id: str) -> Dict[str, Any]:
 
 #     test_user_id = "caa3abb6-c2cc-426e-9ee3-dad32aa31883"  # use real id
 
-#     print("\n--- Testing get_user_profile ---")
+#     print("\n--- Testing get_user_profile ---") 
 #     profile = get_user_profile(test_user_id)
 #     print(profile)
 

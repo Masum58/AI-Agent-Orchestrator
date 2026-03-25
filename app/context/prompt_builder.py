@@ -83,9 +83,11 @@ def build_prompt(
     # 6. Instruction (VERY IMPORTANT 🔥)
     # -----------------------------
     sections.append("\n### INSTRUCTION")
-    sections.append(
-        "Use identity, experience memory, and conversation context to generate a relevant response."
-    )
+    sections.append("""
+    Use the conversation and past experience to answer.
+    Do not make up facts.
+    If unsure, say you don't know.
+    """)
 
     # -----------------------------
     # 6. Response Section
