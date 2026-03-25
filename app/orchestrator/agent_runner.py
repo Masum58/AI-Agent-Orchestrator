@@ -74,7 +74,7 @@ Do NOT repeat it unnecessarily.
             if not conversation:
                 logger.warning("Conversation empty,retrying after delay..")
                 time.sleep(1)
-                conversation.get_instance_messages(user_id)
+                conversation=get_instance_messages(user_id)
         except Exception as e:
             logger.error(f"Conversation fetch failed: {str(e)}")
             conversation = []

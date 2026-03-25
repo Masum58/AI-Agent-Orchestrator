@@ -18,6 +18,7 @@ load_dotenv()
 # Create an OpenAI client
 # The API key is used to authenticate and connect to OpenAI servers
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+print("KEY:", os.getenv("OPENAI_API_KEY"))
 
 
 # This function sends a prompt to the AI model

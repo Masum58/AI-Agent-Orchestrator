@@ -1,76 +1,71 @@
-# This file is responsible for handling memory-related data.
-# It acts as a middle layer between the AI system and the database APIs.
-# The AI system does NOT directly talk to the database.
-# Instead, it uses this file to get clean and structured data.
-
-
 from typing import List, Dict
+from app.core.logger import logger
 
-# Import function that fetches messages from the database service
-# This function sends a request to the database API and returns raw data.
-from app.services.database_client import get_user_messages
+# 🔥 USE EXPERIENCE API (temporary fix)
+from app.services.experience_api import search_experience
 
 
 # -------------------------------------------------
 # Function: get_instance_messages
 # -------------------------------------------------
-# This function retrieves conversation history (short-term memory).
-# It loads previous messages of a user and formats them properly
-# so the AI model can understand them.
 def get_instance_messages(user_id: str) -> List[Dict]:
+    """
+    Fetch conversation history and normalize for LLM
+    """
 
     try:
-        # Step 1: Get raw messages from the database
-        messages = get_user_messages(user_id)
+        # -----------------------------
+        # 1. Fetch from EXPERIENCE API
+        # -----------------------------
+        messages = search_experience(user_id, query="")
 
-        # Step 2: Normalize the data format
-        # This is very important because the AI model expects
-        # messages in a specific format: role + content
+        logger.info(f"[MEMORY] Raw experience count: {len(messages)}")
+
+        if not messages:
+            return []
+
+        # -----------------------------
+        # 2. Normalize messages
+        # -----------------------------
         normalized_messages = []
 
-        all_raw_messages = []
         for instance in messages:
-            if isinstance(instance, dict):
-                all_raw_messages.extend(instance.get("messages", []))
+            if not isinstance(instance, dict):
+                continue
 
-        # Sort messages chronologically
-        all_raw_messages.sort(key=lambda x: x.get("createdAt", ""))
+            user_msg = instance.get("userQuery")
+            ai_msg = instance.get("aiResponse")
 
-        for msg in all_raw_messages:
-            # Each message is converted into a clean structure
-            role = str(msg.get("role", "user")).lower()
-            if role == "assistant":
-                role = "assistant"
-            elif role == "user":
-                role = "user"
+            # User message
+            if user_msg:
+                normalized_messages.append({
+                    "role": "user",
+                    "content": str(user_msg).strip()
+                })
 
-            normalized_messages.append({
-                "role": role,
-                "content": msg.get("content", "")
-            })
+            # Assistant message
+            if ai_msg:
+                normalized_messages.append({
+                    "role": "assistant",
+                    "content": str(ai_msg).strip()
+                })
 
-        # Return cleaned conversation history
+        logger.info(f"[MEMORY] Normalized messages: {len(normalized_messages)}")
+
         return normalized_messages
 
     except Exception as e:
-        # If something goes wrong (API error, network issue, etc.),
-        # we log the error and return an empty list.
-        print(f"[Memory Service Error] get_instance_messages: {e}")
+        logger.error(f"[Memory Service Error] get_instance_messages: {e}")
         return []
 
 
 # -------------------------------------------------
-# Function: search_experience
+# Function: search_experience (KEEP for fallback)
 # -------------------------------------------------
-# This function retrieves long-term memory (past experiences).
-# Right now, it is using sample (mock) data.
-# Later, it will connect to a real database or vector search system.
-def search_experience(query: str) -> List[str]:
-
-    # TODO: Replace this with real database or vector search API
-    # Example: db_search_experience(query)
-
-    # Return example past experiences
+def search_experience_local(query: str) -> List[str]:
+    """
+    Local fallback (not used now)
+    """
     return [
         "User previously asked about contract review",
         "Agent generated NDA summary"
