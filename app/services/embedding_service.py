@@ -48,3 +48,5 @@ def generate_embedding(text: str) -> List[float]:
     except Exception as e:
         print(f"[EMBEDDING ERROR] Failed to generate embedding: {e}")
         return []
+
+
